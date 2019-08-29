@@ -31,6 +31,8 @@ pub fn display(str_vec: &Vec<String>) {
             Key::Backspace => {
                 fscreen.backspace_str();
             }
+            Key::Char('\n') => {
+            }
             Key::Char(ch) => {
                 fscreen.append_str(ch);
             }

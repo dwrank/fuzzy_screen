@@ -11,7 +11,7 @@ impl ScreenItem {
     pub fn new(s: &String) -> Self {
         ScreenItem {
             name: s.clone(),
-            value: 1.0
+            value: 1.0,
         }
     }
 }
@@ -29,7 +29,7 @@ pub struct ScreenItems {
 }
 
 impl ScreenItems {
-    pub fn new(item_vec: &Vec<ScreenItem>, rows: i32) -> ScreenItems {
+    pub fn new(item_vec: &[ScreenItem], rows: i32) -> ScreenItems {
         let mut fscreen = ScreenItems {
             item_vec: item_vec.to_vec(),
             rows,
