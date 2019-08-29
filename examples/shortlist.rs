@@ -20,6 +20,6 @@ fn main() {
         str_vec.push(s);
     }
 
-    controller::display(str_vec);
+    controller::display(&str_vec);
 }
 

@@ -6,8 +6,8 @@ use std::io::{stdin, stdout};
 
 use crate::screen::FuzzyScreen;
 
-pub fn display(str_vec: Vec<String>) {
-    let mut fscreen = FuzzyScreen::new(stdout().into_raw_mode().unwrap(), &str_vec);
+pub fn display(str_vec: &Vec<String>) {
+    let mut fscreen = FuzzyScreen::new(stdout().into_raw_mode().unwrap(), str_vec);
 
     let stdin = stdin();
     fscreen.hide_cursor();

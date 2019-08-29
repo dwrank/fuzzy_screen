@@ -5,7 +5,7 @@ use strsim::{hamming, levenshtein, normalized_levenshtein, osa_distance,
              damerau_levenshtein, normalized_damerau_levenshtein, jaro,
              jaro_winkler};
 
-use crate::items::ScreenItems;
+use crate::items::{ScreenItem, ScreenItems};
 //use crate::debug;
 //use crate::debug::log;
 
@@ -15,24 +15,37 @@ pub struct FuzzyScreen<W: Write> {
     cols: i32,  // display cols
     rows: i32,  // display rows
     search_str: String,
+    item_vec: Vec<ScreenItem>,
+}
+
+fn item_vec(str_vec: &Vec<String>) -> Vec<ScreenItem> {
+    let mut item_vec: Vec<ScreenItem> = Vec::new();
+    for s in str_vec {
+        item_vec.push(ScreenItem::new(&s));
+    }
+
+    item_vec
 }
 
 impl<W: Write> FuzzyScreen<W> {
-    pub fn new(output: W, items: &Vec<String>) -> Self {
+    pub fn new(output: W, str_vec: &Vec<String>) -> Self {
         let (cols, rows) = termion::terminal_size().unwrap();
         //debug::new();
 
+        let item_vec = item_vec(str_vec);
+
         FuzzyScreen {
             screen: AlternateScreen::from(output),
-            items: ScreenItems::new(items, rows as i32),
+            items: ScreenItems::new(&item_vec, rows as i32),
             cols: cols as i32,
             rows: rows as i32,
             search_str: String::new(),
+            item_vec: item_vec
         }
     }
 
-    pub fn new_items(&mut self, items: &Vec<String>) {
-        self.items = ScreenItems::new(items, self.rows);
+    pub fn new_items(&mut self, str_vec: &Vec<String>) {
+        self.items = ScreenItems::new(&item_vec(str_vec), self.rows);
         self.display();
     }
 }
@@ -91,9 +104,9 @@ impl<W: Write> FuzzyScreen<W> {
         write!(self.screen, "{}", termion::clear::All).unwrap();
         //write!(self.screen, "{} {} {} {} {}\r\n", max_display_items, num_items, num_display_items, start, end).unwrap();
 
-        //for (i, s) in str_vec.iter().enumerate() {
+        //for (i, s) in item_vec.iter().enumerate() {
         let mut i = self.items.start();
-        for s in self.items.str_vec_display() {
+        for item in self.items.item_vec_display() {
             //log(&format!("{} {}\n", i, s)[..]);
             if i == self.items.selected() {
                 write!(self.screen, "{}",
@@ -107,7 +120,7 @@ impl<W: Write> FuzzyScreen<W> {
             write!(self.screen, "{goto}{index}: {file}{reset}\r\n",
                    goto = termion::cursor::Goto(goto.0, goto.1),
                    index = i + 1,
-                   file = s,
+                   file = item.name,
                    reset = termion::color::Fg(termion::color::Reset)).unwrap();
             goto.1 += 1;
             i += 1;
