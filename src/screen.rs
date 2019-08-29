@@ -6,6 +6,7 @@ use strsim::{hamming, levenshtein, normalized_levenshtein, osa_distance,
              jaro_winkler};
 
 use crate::items::ScreenItems;
+//use crate::debug;
 //use crate::debug::log;
 
 pub struct FuzzyScreen<W: Write> {
@@ -19,6 +20,7 @@ pub struct FuzzyScreen<W: Write> {
 impl<W: Write> FuzzyScreen<W> {
     pub fn new(output: W, items: &Vec<String>) -> Self {
         let (cols, rows) = termion::terminal_size().unwrap();
+        //debug::new();
 
         FuzzyScreen {
             screen: AlternateScreen::from(output),
