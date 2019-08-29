@@ -1,0 +1,43 @@
+
+extern crate fuzzy_screen;
+
+use fuzzy_screen::controller;
+
+fn main() {
+    let mut str_vec: Vec<String> = Vec::new();
+    let mut s: String;
+
+    for i in 1..200 {
+        if i < 20 {
+            s = format!("alpha_{}", i);
+        }
+        else if i < 37 {
+            s = format!("bravo_{}", i);
+        }
+        else if i < 87 {
+            s = format!("charlie_{}", i);
+        }
+        else if i < 99 {
+            s = format!("delta_{}", i);
+        }
+        else if i < 117 {
+            s = format!("echo_{}", i);
+        }
+        else if i < 144 {
+            s = format!("foxtrot_{}", i);
+        }
+        else if i < 163 {
+            s = format!("golf_{}", i);
+        }
+        else if i < 190 {
+            s = format!("hotel_{}", i);
+        }
+        else {
+            s = format!("india_{}", i);
+        }
+        str_vec.push(s);
+    }
+
+    controller::display(str_vec);
+}
+
