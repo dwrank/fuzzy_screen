@@ -141,11 +141,12 @@ impl<W: Write> FuzzyScreen<W> {
             i += 1;
         }
 
-        write!(self.screen, "{goto}{bg}{fg}{text}",
+        write!(self.screen, "{goto}  {bg}{fg}{n1}/{n2}",
                goto = termion::cursor::Goto(goto.0, goto.1),
                bg = unselected_bg_color,
                fg = unselected_fg_color,
-               text = self.manager.num_items()).unwrap();
+               n1 = self.manager.num_items(),
+               n2 = self.manager.base_num_items()).unwrap();
         goto.1 += 1;
 
         write!(self.screen, "{goto}{search_cursor_color}>{fg_reset} {s}",

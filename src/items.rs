@@ -63,6 +63,10 @@ impl ScreenManager {
 }
 
 impl ScreenManager {
+    pub fn base_num_items(&self) -> i32 {
+        self.base_items.len() as i32
+    }
+
     pub fn num_items(&self) -> i32 {
         self.num_items
     }
