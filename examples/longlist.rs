@@ -2,9 +2,10 @@
 extern crate fuzzy_screen;
 
 use fuzzy_screen::controller;
+use fuzzy_screen::items::ScreenItem;
 
 fn main() {
-    let mut str_vec: Vec<String> = Vec::new();
+    let mut items: Vec<ScreenItem> = Vec::new();
     let mut s: String;
 
     for i in 1..200 {
@@ -35,9 +36,10 @@ fn main() {
         else {
             s = format!("india_{}", i);
         }
-        str_vec.push(s);
+
+        items.push(ScreenItem::new(s));
     }
 
-    controller::display(&str_vec);
+    controller::display(items);
 }
 

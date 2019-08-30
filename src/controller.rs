@@ -5,9 +5,10 @@ use termion::input::TermRead;
 use std::io::{stdin, stdout};
 
 use crate::screen::FuzzyScreen;
+use crate::items::ScreenItem;
 
-pub fn display(str_vec: &Vec<String>) {
-    let mut fscreen = FuzzyScreen::new(stdout().into_raw_mode().unwrap(), str_vec);
+pub fn display(items: Vec<ScreenItem>) {
+    let mut fscreen = FuzzyScreen::new(stdout().into_raw_mode().unwrap(), items);
 
     let stdin = stdin();
     fscreen.hide_cursor();

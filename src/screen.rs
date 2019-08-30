@@ -5,76 +5,71 @@ use strsim::{hamming, levenshtein, normalized_levenshtein, osa_distance,
              damerau_levenshtein, normalized_damerau_levenshtein, jaro,
              jaro_winkler};
 
-use crate::items::{ScreenItem, ScreenItems};
-use crate::debug;
-use crate::debug::log;
+use crate::items::{ScreenItem, ScreenManager};
+//use crate::debug;
+//use crate::debug::log;
 
 pub struct FuzzyScreen<W: Write> {
     screen: AlternateScreen<W>,
-    items: ScreenItems,
+    manager: ScreenManager,
     cols: i32,  // display cols
     rows: i32,  // display rows
+    max_display_items: i32,
     search_str: String,
-    item_vec: Vec<ScreenItem>,
 }
 
-fn item_vec(str_vec: &Vec<String>) -> Vec<ScreenItem> {
-    let mut item_vec: Vec<ScreenItem> = Vec::new();
+fn create_items(str_vec: Vec<String>) -> Vec<ScreenItem> {
+    let mut items: Vec<ScreenItem> = Vec::new();
     for s in str_vec {
-        item_vec.push(ScreenItem::new(&s));
+        items.push(ScreenItem::new(s));
     }
 
-    item_vec
+    items
 }
 
 impl<W: Write> FuzzyScreen<W> {
-    pub fn new(output: W, str_vec: &Vec<String>) -> Self {
+    pub fn new(output: W, items: Vec<ScreenItem>) -> Self {
         let (cols, rows) = termion::terminal_size().unwrap();
-        debug::new();
-
-        let item_vec = item_vec(str_vec);
+        let max_display_items = rows as i32 - 2;
+        //debug::new();
 
         FuzzyScreen {
             screen: AlternateScreen::from(output),
-            items: ScreenItems::new(&item_vec, rows as i32),
+            manager: ScreenManager::new(items, max_display_items),
             cols: cols as i32,
             rows: rows as i32,
+            max_display_items: max_display_items,
             search_str: String::new(),
-            item_vec: item_vec
         }
-    }
-
-    pub fn new_items(&mut self, str_vec: &Vec<String>) {
-        self.items = ScreenItems::new(&item_vec(str_vec), self.rows);
-        self.display();
     }
 }
 
 impl<W: Write> FuzzyScreen<W> {
     pub fn select_up(&mut self) {
-        self.items.select_up();
+        self.manager.select_up();
         self.display();
     }
 
     pub fn select_down(&mut self) {
-        self.items.select_down();
+        self.manager.select_down();
         self.display();
     }
 
     pub fn select_page_up(&mut self) {
-        self.items.select_page_up();
+        self.manager.select_page_up();
         self.display();
     }
 
     pub fn select_page_down(&mut self) {
-        self.items.select_page_down();
+        self.manager.select_page_down();
         self.display();
     }
 
     pub fn backspace_str(&mut self) {
         match self.search_str.pop() {
             Some(_) => {
-                self.fuzzy_sort();
+                self.manager.fuzzy_sort(&self.search_str[..]);
+                self.display();
             }
             None => {}
         }
@@ -82,64 +77,9 @@ impl<W: Write> FuzzyScreen<W> {
 
     pub fn append_str(&mut self, c: char) {
         self.search_str.push(c);
-        self.fuzzy_sort();
-    }
-
-    fn fuzzy_sort(&mut self) {
-        for i in 0..self.item_vec.len() {
-            self.item_vec[i].value = fuzzy_match(&self.search_str[..], &self.item_vec[i].name[..]);
-            //self.item_vec[i].value = normalized_damerau_levenshtein(&self.search_str[..], &self.item_vec[i].name[..]);
-        }
-        self.item_vec.sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap());
-
-        let mut n = 0;
-        for (i, item) in self.item_vec.iter().enumerate() {
-            if item.value != 0.0 {
-                n = i;
-                break;
-            }
-        }
-
-        self.items = ScreenItems::new(&self.item_vec[n..], self.rows);
+        self.manager.fuzzy_sort(&self.search_str[..]);
         self.display();
     }
-}
-
-// s1 is the search str
-// s2 is the list item str
-fn fuzzy_match(s1: &str, s2: &str) -> f64 {
-    let mut value = 1.0;
-    let l1 = s1.len();
-    let l2 = s2.len();
-    let mut penalty = 1.0 / l2 as f64;
-    log(&format!("fuzzy_value: {} {}\n", s1 , s2));
-
-    if l1 > l2 {
-        value = 0.0;
-    }
-    else {
-        let mut i2 = 0;
-        let mut s2 = s2;
-        for c1 in s1.chars() {
-            s2 = &s2[i2..];
-            log(&format!("i2: {} -> {}\n", i2 , s2));
-            match s2.find(c1) {
-                Some(n) => {
-                    log(&format!("match n: {}\n", n));
-                    value -= n as f64 * penalty;
-                    log(&format!("new value: {}\n", value));
-                    i2 = n + 1;
-                    log(&format!("new i2: {}\n", i2));
-                }
-                None => {
-                    value = 0.0;
-                    break;
-                }
-            }
-        }
-    }
-
-    value
 }
 
 impl<W: Write> FuzzyScreen<W> {
@@ -161,21 +101,22 @@ impl<W: Write> FuzzyScreen<W> {
         let search_cursor_color = termion::color::Fg(termion::color::LightCyan);
 
         // (col, row)
-        let mut goto = (1, (self.items.max_display_items - self.items.num_display_items + 1) as u16);
+        let display_items = self.manager.display_items();
+        let mut goto = (1, (self.max_display_items - display_items.len() as i32 + 1) as u16);
         write!(self.screen, "{}", termion::clear::All).unwrap();
 
-        let mut i = self.items.start();
+        let mut i = self.manager.start();
         let mut fill = String::new();
         for i in 0..self.cols {
             fill.push(' ');
         }
 
-        for item in self.items.item_vec_display() {
+        for item in display_items {
             // goto line
             write!(self.screen, "{}",
                    goto = termion::cursor::Goto(goto.0, goto.1)).unwrap();
 
-            if i == self.items.selected() {
+            if i == self.manager.selected() {
                 write!(self.screen, "{style}{cursor_color}> {bg}{fg}",
                        style = termion::style::Bold,
                        cursor_color = selected_cursor_color,
@@ -204,7 +145,7 @@ impl<W: Write> FuzzyScreen<W> {
                goto = termion::cursor::Goto(goto.0, goto.1),
                bg = unselected_bg_color,
                fg = unselected_fg_color,
-               text = self.items.num_items()).unwrap();
+               text = self.manager.num_items()).unwrap();
         goto.1 += 1;
 
         write!(self.screen, "{goto}{search_cursor_color}>{fg_reset} {s}",

@@ -8,32 +8,30 @@ pub struct ScreenItem {
 }
 
 impl ScreenItem {
-    pub fn new(s: &String) -> Self {
+    pub fn new(s: String) -> Self {
         ScreenItem {
-            name: s.clone(),
+            name: s,
             value: 1.0,
         }
     }
 }
 
-pub struct ScreenItems {
-    item_vec: Vec<ScreenItem>,  // display strings
-    rows: i32,  // display rows
-    pub max_display_items: i32,  // max num of items to display
+pub struct ScreenManager {
+    base_items: Vec<ScreenItem>,  // display strings
+    max_display_items: i32,  // max num of items to display
     num_items: i32,          // total num of items
-    pub num_display_items: i32,  // num of items to display
+    num_display_items: i32,  // num of items to display
     start: i32,  // display start index
     end: i32,    // display end index
     last: i32,   // last index
     sel: i32,    // selected index
 }
 
-impl ScreenItems {
-    pub fn new(item_vec: &[ScreenItem], rows: i32) -> ScreenItems {
-        let mut fscreen = ScreenItems {
-            item_vec: item_vec.to_vec(),
-            rows,
-            max_display_items: 0,
+impl ScreenManager {
+    pub fn new(base_items: Vec<ScreenItem>, max_display_items: i32) -> ScreenManager {
+        let mut fscreen = ScreenManager {
+            base_items,
+            max_display_items,
             num_items: 0,
             num_display_items: 0,
             start: 0,
@@ -42,14 +40,12 @@ impl ScreenItems {
             sel: 0,
         };
 
-        fscreen.init();
+        fscreen.init(fscreen.base_items.len() as i32);
         fscreen
     }
 
-    fn init(&mut self) {
-        self.max_display_items = self.rows - 2;
-
-        self.num_items = self.item_vec.len() as i32;
+    fn init(&mut self, num_items: i32) {
+        self.num_items = num_items;
         self.end = self.num_items - 1;
         self.start = 0;
         self.last = self.end;
@@ -66,7 +62,7 @@ impl ScreenItems {
     }
 }
 
-impl ScreenItems {
+impl ScreenManager {
     pub fn num_items(&self) -> i32 {
         self.num_items
     }
@@ -83,14 +79,17 @@ impl ScreenItems {
         self.end
     }
 
-    pub fn item_vec_display(&self) -> &[ScreenItem] {
+    pub fn display_items(&self) -> &[ScreenItem] {
         let start = self.start as usize;
         let stop = self.end as usize + 1;
-        &self.item_vec[start..stop]
+        let base_stop = self.base_items.len();
+        let base_start = base_stop - self.num_items as usize;
+        let items = &self.base_items[base_start..base_stop];
+        &items[start..stop]
     }
 }
 
-impl ScreenItems {
+impl ScreenManager {
     pub fn select_up(&mut self) {
         if self.sel > 0 {
             self.sel -= 1;
@@ -149,5 +148,62 @@ impl ScreenItems {
             self.start = self.end - n + 1;
         }
     }
+}
+
+impl ScreenManager {
+    pub fn fuzzy_sort(&mut self, search_str: &str) {
+        for i in 0..self.base_items.len() {
+            self.base_items[i].value = fuzzy_match(search_str, &self.base_items[i].name[..]);
+            //self.base_items[i].value = normalized_damerau_levenshtein(search_str, &self.base_items[i].name[..]);
+        }
+        self.base_items.sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap());
+
+        let mut n = 0;
+        for (i, item) in self.base_items.iter().enumerate() {
+            if item.value != 0.0 {
+                n = i;
+                break;
+            }
+        }
+
+        self.init((self.base_items.len() - n) as i32);
+    }
+}
+
+// s1 is the search str
+// s2 is the list item str
+fn fuzzy_match(s1: &str, s2: &str) -> f64 {
+    let mut value = 1.0;
+    let l1 = s1.len();
+    let l2 = s2.len();
+    let penalty = 1.0 / l2 as f64;
+    //log(&format!("fuzzy_value: {} {}\n", s1 , s2));
+
+    if l1 > l2 {
+        value = 0.0;
+    }
+    else {
+        let mut i2 = 0;
+        let mut s2 = s2;
+        for c1 in s1.chars() {
+            s2 = &s2[i2..];
+            //log(&format!("i2: {} -> {}\n", i2 , s2));
+            match s2.find(c1) {
+                Some(n) => {
+                    //log(&format!("match n: {}\n", n));
+                    value -= n as f64 * penalty;
+                    //log(&format!("new value: {}\n", value));
+                    i2 = n + 1;
+                    //log(&format!("new i2: {}\n", i2));
+                }
+                None => {
+                    value = 0.0;
+                    break;
+                }
+            }
+        }
+    }
+
+    value
 }
 
