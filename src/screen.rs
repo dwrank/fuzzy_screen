@@ -152,39 +152,77 @@ impl<W: Write> FuzzyScreen<W> {
     }
 
     pub fn display(&mut self) {
-        let unselected_color = termion::color::Fg(termion::color::White);
-        let selected_color = termion::color::Fg(termion::color::Green);
+        let unselected_fg_color = termion::color::Fg(termion::color::White);
+        let selected_fg_color = termion::color::Fg(termion::color::White);
+        let unselected_bg_color = termion::color::Bg(termion::color::Black);
+        let selected_bg_color = termion::color::Bg(termion::color::LightBlack);
+        let font_color = termion::color::Fg(termion::color::White);
+        let selected_cursor_color = termion::color::Fg(termion::color::Green);
+        let search_cursor_color = termion::color::Fg(termion::color::LightCyan);
 
         // (col, row)
         let mut goto = (1, (self.items.max_display_items - self.items.num_display_items + 1) as u16);
         write!(self.screen, "{}", termion::clear::All).unwrap();
 
         let mut i = self.items.start();
+        let mut fill = String::new();
+        for i in 0..self.cols {
+            fill.push(' ');
+        }
+
         for item in self.items.item_vec_display() {
-            //log(&format!("{} {}\n", i, s)[..]);
+            // goto line
+            write!(self.screen, "{}",
+                   goto = termion::cursor::Goto(goto.0, goto.1)).unwrap();
+
             if i == self.items.selected() {
-                write!(self.screen, "{}",
-                       selected_color).unwrap();
+                write!(self.screen, "{style}{cursor_color}> {bg}{fg}",
+                       style = termion::style::Bold,
+                       cursor_color = selected_cursor_color,
+                       bg = selected_bg_color,
+                       fg = selected_fg_color).unwrap();
             }
             else {
-                write!(self.screen, "{}",
-                       unselected_color).unwrap();
+                write!(self.screen, "  {bg}{fg}",
+                       bg = unselected_bg_color,
+                       fg = unselected_fg_color).unwrap();
             }
 
-            write!(self.screen, "{goto}{index}: {file} {value}{reset}\r\n",
-                   goto = termion::cursor::Goto(goto.0, goto.1),
-                   index = i + 1,
-                   file = item.name,
-                   value = item.value,
-                   reset = termion::color::Fg(termion::color::Reset)).unwrap();
+            let text = String::from(format!("{}: {} {}", i + 1, item.name, item.value));
+            let fill_space = self.cols as usize - text.len() - 2;
+            let line_fill = &fill[0..fill_space];
+
+            write!(self.screen, "{text}{fill}{style_reset}",
+                   text = text,
+                   fill = line_fill,
+                   style_reset = termion::style::Reset).unwrap();
             goto.1 += 1;
             i += 1;
         }
 
-        write!(self.screen, "{}\r\n", self.items.num_items()).unwrap();
+        write!(self.screen, "{goto}{bg}{fg}{text}",
+               goto = termion::cursor::Goto(goto.0, goto.1),
+               bg = unselected_bg_color,
+               fg = unselected_fg_color,
+               text = self.items.num_items()).unwrap();
+        goto.1 += 1;
 
-        write!(self.screen, "> {}", self.search_str).unwrap();
+        write!(self.screen, "{goto}{search_cursor_color}>{fg_reset} {s}",
+               goto = termion::cursor::Goto(goto.0, goto.1),
+               s = self.search_str,
+               search_cursor_color = search_cursor_color,
+               fg_reset = termion::color::Fg(termion::color::Reset)).unwrap();
+        goto.1 += 1;
+
+        // reset colors
+        write!(self.screen, "{goto}{bg}{fg}",
+               goto = termion::cursor::Goto(goto.0, goto.1),
+               bg = termion::color::Bg(termion::color::Reset),
+               fg = termion::color::Fg(termion::color::Reset)).unwrap();
 
         self.screen.flush().unwrap();
+    }
+
+    fn write_text(&self, text: &str) {
     }
 }
