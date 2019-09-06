@@ -68,7 +68,7 @@ impl<W: Write> FuzzyScreen<W> {
     pub fn backspace_str(&mut self) {
         match self.search_str.pop() {
             Some(_) => {
-                self.manager.fuzzy_sort(&self.search_str[..]);
+                self.manager.fuzzy_sort(&self.search_str);
                 self.display();
             }
             None => {}
@@ -77,10 +77,12 @@ impl<W: Write> FuzzyScreen<W> {
 
     pub fn append_str(&mut self, c: char) {
         self.search_str.push(c);
-        self.manager.fuzzy_sort(&self.search_str[..]);
+        self.manager.fuzzy_sort(&self.search_str);
         self.display();
     }
 }
+
+//const UNSELECTED_FG_COLOR: termion::color::Fg<termion::color::White> = termion::color::Fg(termion::color::White);
 
 impl<W: Write> FuzzyScreen<W> {
     pub fn hide_cursor(&mut self) {
@@ -101,9 +103,17 @@ impl<W: Write> FuzzyScreen<W> {
         let search_cursor_color = termion::color::Fg(termion::color::LightCyan);
 
         // (col, row)
-        let display_items = self.manager.display_items();
-        let mut goto = (1, (self.max_display_items - display_items.len() as i32 + 1) as u16);
         write!(self.screen, "{}", termion::clear::All).unwrap();
+        let display_items: &[ScreenItem];
+        match self.manager.display_items() {
+            Some(items) => { display_items = items; }
+            None => {
+                self.display_end();
+                return;
+            }
+        }
+
+        let mut goto = (1, (self.max_display_items - display_items.len() as i32 + 1) as u16);
 
         let mut i = self.manager.start();
         let mut fill = String::new();
@@ -141,6 +151,20 @@ impl<W: Write> FuzzyScreen<W> {
             i += 1;
         }
 
+        self.display_end();
+    }
+
+    fn display_end(&mut self) {
+        let unselected_fg_color = termion::color::Fg(termion::color::White);
+        let selected_fg_color = termion::color::Fg(termion::color::White);
+        let unselected_bg_color = termion::color::Bg(termion::color::Black);
+        let selected_bg_color = termion::color::Bg(termion::color::LightBlack);
+        let font_color = termion::color::Fg(termion::color::White);
+        let selected_cursor_color = termion::color::Fg(termion::color::Green);
+        let search_cursor_color = termion::color::Fg(termion::color::LightCyan);
+
+        let mut goto = (1, (self.max_display_items + 1) as u16);
+
         write!(self.screen, "{goto}  {bg}{fg}{n1}/{n2}",
                goto = termion::cursor::Goto(goto.0, goto.1),
                bg = unselected_bg_color,
@@ -163,8 +187,5 @@ impl<W: Write> FuzzyScreen<W> {
                fg = termion::color::Fg(termion::color::Reset)).unwrap();
 
         self.screen.flush().unwrap();
-    }
-
-    fn write_text(&self, text: &str) {
     }
 }

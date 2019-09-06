@@ -16,7 +16,7 @@ macro_rules! log {
     ($fmt:expr, $($name:ident),*) => { write!(&mut debug::file(), $fmt, $($name),*) }
 }*/
 
-pub fn log(msg: &String) {
+pub fn log(msg: &str) {
     /*write!(self.screen, "{}", ToMainScreen).unwrap();
     write!(self.screen, "{}\r\n", msg).unwrap();
     write!(self.screen, "{}", ToAlternateScreen).unwrap();

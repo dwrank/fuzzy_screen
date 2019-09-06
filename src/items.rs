@@ -46,19 +46,28 @@ impl ScreenManager {
 
     fn init(&mut self, num_items: i32) {
         self.num_items = num_items;
-        self.end = self.num_items - 1;
-        self.start = 0;
-        self.last = self.end;
-        self.sel = self.end;
-        
-        if self.num_items > self.max_display_items {
-            self.start = self.end - self.max_display_items + 1;
+        if num_items == 0 {
+            self.start = 0;
+            self.end = 0;
+            self.last = 0;
+            self.sel = 0;
+            self.num_display_items = 0;
         }
         else {
-            self.start = self.end - self.num_items + 1;
-        }
+            self.end = self.num_items - 1;
+            self.start = 0;
+            self.last = self.end;
+            self.sel = self.end;
+            
+            if self.num_items > self.max_display_items {
+                self.start = self.end - self.max_display_items + 1;
+            }
+            else {
+                self.start = self.end - self.num_items + 1;
+            }
 
-        self.num_display_items = self.end - self.start + 1;
+            self.num_display_items = self.end - self.start + 1;
+        }
     }
 }
 
@@ -83,13 +92,18 @@ impl ScreenManager {
         self.end
     }
 
-    pub fn display_items(&self) -> &[ScreenItem] {
-        let start = self.start as usize;
-        let stop = self.end as usize + 1;
-        let base_stop = self.base_items.len();
-        let base_start = base_stop - self.num_items as usize;
-        let items = &self.base_items[base_start..base_stop];
-        &items[start..stop]
+    pub fn display_items(&self) -> Option<&[ScreenItem]> {
+        if self.num_items > 0 {
+            let start = self.start as usize;
+            let stop = self.end as usize + 1;
+            let base_stop = self.base_items.len();
+            let base_start = base_stop - self.num_items as usize;
+            let items = &self.base_items[base_start..base_stop];
+            Some(&items[start..stop])
+        }
+        else {
+            None
+        }
     }
 }
 
@@ -132,7 +146,7 @@ impl ScreenManager {
             self.start = self.sel;
             self.end = self.start + n - 1;
         }
-        //log(&format!("\n{} {} {} {}\n", self.start, self.end, self.sel, self.num_display_items)[..]);
+        //log(&format!("\n{} {} {} {}\n", self.start, self.end, self.sel, self.num_display_items));
     }
 
     pub fn select_page_down(&mut self) {
@@ -157,17 +171,17 @@ impl ScreenManager {
 impl ScreenManager {
     pub fn fuzzy_sort(&mut self, search_str: &str) {
         for i in 0..self.base_items.len() {
-            self.base_items[i].value = fuzzy_match(search_str, &self.base_items[i].name[..]);
-            //self.base_items[i].value = normalized_damerau_levenshtein(search_str, &self.base_items[i].name[..]);
+            self.base_items[i].value = fuzzy_match(search_str, &self.base_items[i].name);
+            //self.base_items[i].value = normalized_damerau_levenshtein(search_str, &self.base_items[i].name);
         }
         self.base_items.sort_by(|a, b| a.value.partial_cmp(&b.value).unwrap());
 
         let mut n = 0;
-        for (i, item) in self.base_items.iter().enumerate() {
+        for (_, item) in self.base_items.iter().enumerate() {
             if item.value != 0.0 {
-                n = i;
                 break;
             }
+            n += 1;
         }
 
         self.init((self.base_items.len() - n) as i32);
